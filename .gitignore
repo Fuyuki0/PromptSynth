@@ -1,0 +1,47 @@
+# ========================
+# 1. DEPENDENCIES
+# ========================
+node_modules/
+.pnp
+.pnp.js
+
+# ========================
+# 2. NEXT.JS BUILD FILES
+# ========================
+.next/
+out/
+build/
+
+# ========================
+# 3. ENVIRONMENT & SECRETS (Never commit these!)
+# ========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ========================
+# 4. DATABASE (Prisma & SQLite)
+# ========================
+*.db
+*.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+
+# ========================
+# 5. AUDIO & SYNTH FILES (Test files)
+# ========================
+*.vital
+*.mid
+*.midi
+
+# ========================
+# 6. MISC OS FILES & LOGS
+# ========================
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vercel/
