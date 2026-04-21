@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // 1. ClerkProvider MUST wrap the entire application
-    <ClerkProvider>
+    <ClerkProvider afterSignOutUrl="/">
       <html lang="en">
         <head>
           {/* THE SLEDGEHAMMER: Bypasses Next.js and forces the browser to refresh on Alt+Left */}

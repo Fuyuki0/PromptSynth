@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SlidersHorizontal, Library, Music, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { SignInButton, UserButton, useAuth, ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
 
-export default function Sidebar() {
+function SidebarContent() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -180,7 +180,7 @@ export default function Sidebar() {
 
               <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 rounded-xl">
                 <span className="text-sm text-zinc-400">Account</span>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
               </div>
 
             </div>
@@ -189,5 +189,20 @@ export default function Sidebar() {
 
       </div>
     </aside>
+  );
+}
+
+export default function Sidebar() {
+  return (
+    <Suspense fallback={
+      <aside className="w-64 bg-zinc-950 border-r border-zinc-800 h-screen fixed left-0 top-0 flex flex-col p-4 z-50">
+        <div className="flex items-center space-x-3 text-purple-400 mb-10 mt-2 px-2">
+          <SlidersHorizontal size={28} />
+          <h1 className="text-2xl font-bold tracking-tight text-white">PromptSynth</h1>
+        </div>
+      </aside>
+    }>
+      <SidebarContent />
+    </Suspense>
   );
 }
