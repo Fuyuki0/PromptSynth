@@ -23,14 +23,14 @@ export async function processCreditRefill(userId: string) {
   if (hoursPassed >= REFILL_HOURS && userSub.freeCredits < MAX_CREDITS) {
     const refillCycles = Math.floor(hoursPassed / REFILL_HOURS);
     const newCredits = Math.min(userSub.freeCredits + (refillCycles * REFILL_AMOUNT), MAX_CREDITS);
-    
+
     // Advance the refill timer precisely based on how many cycles passed
     // @ts-ignore - IDE Cache Ghost
     const newRefillTime = new Date(userSub.lastCreditRefill.getTime() + (refillCycles * REFILL_HOURS * 60 * 60 * 1000));
 
     userSub = await prisma.userSubscription.update({
       where: { userId },
-      data: { 
+      data: {
         freeCredits: newCredits,
         // @ts-ignore - IDE Cache Ghost
         lastCreditRefill: newRefillTime
@@ -41,13 +41,13 @@ export async function processCreditRefill(userId: string) {
   // Calculate when the next refill will occur
   // @ts-ignore - IDE Cache Ghost
   const nextRefillDate = new Date(userSub.lastCreditRefill.getTime() + (REFILL_HOURS * 60 * 60 * 1000));
-  
+
   return {
     ...userSub,
     nextRefillTime: userSub.freeCredits < MAX_CREDITS ? nextRefillDate.getTime() : null,
     isPro: !!(
-      userSub.stripePriceId && 
-      userSub.stripeCurrentPeriodEnd && 
+      userSub.stripePriceId &&
+      userSub.stripeCurrentPeriodEnd &&
       userSub.stripeCurrentPeriodEnd.getTime() + 86_400_000 > Date.now()
     )
   };

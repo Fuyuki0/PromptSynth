@@ -33,6 +33,7 @@ prisma/dev.db-journal
 # 5. AUDIO & SYNTH FILES (Test files)
 # ========================
 *.vital
+!assets/init.vital
 *.mid
 *.midi
 

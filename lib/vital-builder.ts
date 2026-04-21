@@ -7,9 +7,10 @@ export function buildVitalPreset(recipe: VitalRecipe): string {
     const templatePath = path.join(process.cwd(), 'assets', 'init.vital');
     const templateRaw = fs.readFileSync(templatePath, 'utf-8');
     const preset = JSON.parse(templateRaw);
+    // It probably looks like one of these:
 
     preset.preset_name = `PromptSynth - ${recipe.mood || 'Custom'} ${recipe.category || 'Sound'}`;
-    
+
     // Set Custom Macro Names
     preset.macro1 = recipe.macro_1_name || "Macro 1";
     preset.macro2 = recipe.macro_2_name || "Macro 2";
@@ -21,7 +22,7 @@ export function buildVitalPreset(recipe: VitalRecipe): string {
     s.env_1_decay = recipe.env_1_decay ?? 0.5;
     s.env_1_sustain = recipe.env_1_sustain ?? 0.5;
     s.env_1_release = recipe.env_1_release ?? 0.5;
-    
+
     s.env_2_attack = recipe.env_2_attack ?? 0.1;
     s.env_2_decay = recipe.env_2_decay ?? 0.5;
     s.env_2_sustain = recipe.env_2_sustain ?? 0.0;
@@ -66,7 +67,7 @@ export function buildVitalPreset(recipe: VitalRecipe): string {
     // ==========================================
     // 6. THE MATRIX (This routes the movement!)
     // ==========================================
-    
+
     s.modulation_1_source = "env_2";
     s.modulation_1_destination = "filter_1_cutoff";
     s.modulation_1_amount = recipe.mod_env_2_to_filter_cutoff ?? 0;

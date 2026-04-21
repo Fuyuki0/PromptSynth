@@ -39,8 +39,17 @@ export async function POST(req: Request) {
 
     console.log(`🤖 Requesting Gemini recipe for: "${prompt}"`);
 
+    // Primary: Gemini 3.1 Flash Lite — 500 req/day on free tier
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite-preview",
+      generationConfig: {
+        responseMimeType: "application/json",
+      }
+    });
+
+    // Fallback: Gemini 3.1 Flash — lower tier
+    const fallbackModel = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         responseMimeType: "application/json",
       }
@@ -72,20 +81,22 @@ export async function POST(req: Request) {
     `;
 
 
-    // Helper function to retry the API call
+    // Helper function to retry the API call with fallback model
     async function generateWithRetry(prompt: string, maxRetries = 3) {
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          // Replace this with your actual Gemini generation call
-          const result = await model.generateContent(prompt);
+          // Use fallback model on the final attempt
+          const currentModel = attempt === maxRetries - 1 ? fallbackModel : model;
+          console.log(`Attempt ${attempt + 1}/${maxRetries} using ${attempt === maxRetries - 1 ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash'}`);
+          const result = await currentModel.generateContent(prompt);
           return result;
 
         } catch (error: any) {
           // If it's a 503 error AND we haven't run out of retries yet
           if (error?.status === 503 && attempt < maxRetries - 1) {
-            console.warn(`Gemini API busy. Retrying in ${attempt + 1} seconds...`);
-            // Wait 1s, then 2s, then 3s...
-            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            console.warn(`Gemini API busy (attempt ${attempt + 1}). Retrying...`);
+            // Wait 2s, then 4s...
+            await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
             continue;
           }
 
