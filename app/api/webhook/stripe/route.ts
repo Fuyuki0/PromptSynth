@@ -11,7 +11,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(req: Request) {
   // Get the raw text body to verify the signature
   const body = await req.text();
-  const signature = headers().get("Stripe-Signature") as string;
+  const signature = (await headers()).get("Stripe-Signature") as string;
 
   let event: Stripe.Event;
 
