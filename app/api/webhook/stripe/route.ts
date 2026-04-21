@@ -27,10 +27,10 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
   }
 
-  const session = event.data.object as Stripe.Checkout.Session;
-
   // EVENT 1: User just bought a brand new subscription
   if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+
     const subscription = await stripe.subscriptions.retrieve(
       session.subscription as string
     );
@@ -39,17 +39,26 @@ export async function POST(req: Request) {
       return new NextResponse("User ID is missing in metadata", { status: 400 });
     }
 
-    // Update the user's database record to unlock Pro features!
-    await prisma.userSubscription.update({
+    // Use upsert: creates the row if it doesn't exist yet, updates if it does
+    await prisma.userSubscription.upsert({
       where: {
         userId: session.metadata.userId,
       },
-      data: {
+      create: {
+        userId: session.metadata.userId,
         stripeSubscriptionId: subscription.id,
         stripeCustomerId: subscription.customer as string,
         stripePriceId: subscription.items.data[0].price.id,
         stripeCurrentPeriodEnd: new Date(
-          subscription.current_period_end * 1000
+          subscription.items.data[0].current_period_end * 1000
+        ),
+      },
+      update: {
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId: subscription.customer as string,
+        stripePriceId: subscription.items.data[0].price.id,
+        stripeCurrentPeriodEnd: new Date(
+          subscription.items.data[0].current_period_end * 1000
         ),
       },
     });
@@ -57,9 +66,20 @@ export async function POST(req: Request) {
 
   // EVENT 2: User's subscription renewed automatically next month
   if (event.type === "invoice.payment_succeeded") {
-    const subscription = await stripe.subscriptions.retrieve(
-      session.subscription as string
-    );
+    const invoice = event.data.object as Stripe.Invoice;
+
+    // In Dahlia API, subscription ref moved to invoice.parent.subscription_details
+    const subDetails = invoice.parent?.subscription_details;
+    if (!subDetails?.subscription) {
+      return new NextResponse(null, { status: 200 });
+    }
+
+    const subscriptionId =
+      typeof subDetails.subscription === "string"
+        ? subDetails.subscription
+        : subDetails.subscription.id;
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
     await prisma.userSubscription.update({
       where: {
@@ -68,7 +88,7 @@ export async function POST(req: Request) {
       data: {
         stripePriceId: subscription.items.data[0].price.id,
         stripeCurrentPeriodEnd: new Date(
-          subscription.current_period_end * 1000
+          subscription.items.data[0].current_period_end * 1000
         ),
       },
     });
