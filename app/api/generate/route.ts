@@ -4,6 +4,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildVitalPreset } from '@/lib/vital-builder';
 import { prisma } from '@/lib/db';
 import { processCreditRefill } from '@/lib/refill';
+import path from "path";
+import fs from "fs/promises";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -18,7 +20,7 @@ export async function POST(req: Request) {
     // ==========================================
     // THE BOUNCER: CREDIT & SUBSCRIPTION CHECK
     // ==========================================
-    
+
     // Process refill logic and get user info
     const userSub = await processCreditRefill(userId);
     const isPro = userSub.isPro;
@@ -98,7 +100,7 @@ export async function POST(req: Request) {
     const vitalFileContent = buildVitalPreset(recipe);
 
     return NextResponse.json({
-      id: savedGeneration.id, 
+      id: savedGeneration.id,
       recipe,
       vitalFileContent
     });
