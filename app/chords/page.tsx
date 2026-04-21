@@ -122,6 +122,12 @@ export default function ChordsPage() {
     setFx(prev => ({ ...prev, [key]: val }));
   };
 
+  const clearSlot = (index: number) => {
+    const newTimeline = [...timeline];
+    newTimeline[index] = null;
+    setTimeline(newTimeline);
+  };
+
   // --- AUDIO ENGINE ---
   const stopPlayback = () => {
     setIsPlaying(false);
