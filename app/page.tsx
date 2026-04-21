@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { Loader2, Wand2, Download, SlidersHorizontal, Library, Music, Zap } from "lucide-react";
+import { SignInButton, useAuth } from "@clerk/nextjs";
+import { Loader2, Wand2, Download, SlidersHorizontal, LogIn } from "lucide-react";
 
 export default function Home() {
 	const [prompt, setPrompt] = useState("");
@@ -15,9 +15,16 @@ export default function Home() {
 	const [credits, setCredits] = useState<number | null>(null);
 	const [isPro, setIsPro] = useState(false);
 	const [loadingText, setLoadingText] = useState("Synthesizing Patch...");
+	const [showLogin, setShowLogin] = useState(false);
 
 	const handleGenerate = async () => {
 		if (!prompt) return;
+
+		// If not logged in, show login modal
+		if (!isSignedIn) {
+			setShowLogin(true);
+			return;
+		}
 
 		setIsGenerating(true);
 		setDownloadUrl(null);
@@ -188,6 +195,43 @@ export default function Home() {
 
 								<button
 									onClick={() => setShowPaywall(false)}
+									className="mt-4 text-sm text-zinc-500 hover:text-zinc-300 font-medium"
+								>
+									Maybe later
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
+				{/* LOGIN MODAL */}
+				{showLogin && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+						<div className="bg-zinc-900 border border-purple-500/30 p-8 rounded-3xl shadow-2xl max-w-md w-full relative overflow-hidden">
+
+							{/* Background Glow */}
+							<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-purple-600/20 blur-3xl rounded-full"></div>
+
+							<div className="relative z-10 flex flex-col items-center text-center">
+								<div className="w-16 h-16 bg-purple-900/50 text-purple-400 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/30">
+									<LogIn size={32} />
+								</div>
+
+								<h2 className="text-3xl font-bold text-white mb-2">Sign In Required</h2>
+								<p className="text-zinc-400 mb-8 leading-relaxed">
+									Sign in to start generating AI-powered synth presets. You'll get <span className="text-purple-400 font-bold">5 free credits</span> to try it out!
+								</p>
+
+								<SignInButton mode="modal">
+									<button
+										className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl flex items-center justify-center transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:scale-[1.02]"
+									>
+										<LogIn className="mr-2" size={20} />
+										Sign In to Generate
+									</button>
+								</SignInButton>
+
+								<button
+									onClick={() => setShowLogin(false)}
 									className="mt-4 text-sm text-zinc-500 hover:text-zinc-300 font-medium"
 								>
 									Maybe later
