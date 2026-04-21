@@ -18,7 +18,7 @@ model Generation {
   userId      String   
   prompt      String
   category    String
-  mood        String
+  mood        String  
   recipeData  String   
   createdAt   DateTime @default(now())
 }

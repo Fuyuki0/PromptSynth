@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     // 1. Verify the user is logged in
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }

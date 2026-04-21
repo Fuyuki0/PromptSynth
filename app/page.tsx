@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Wand2, Download, SlidersHorizontal, Library, Music} from "lucide-react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
+import { Loader2, Wand2, Download, SlidersHorizontal, Library, Music, Zap } from "lucide-react";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
@@ -12,14 +12,35 @@ export default function Home() {
   const [recipe, setRecipe] = useState<any>(null);
   const { isLoaded, isSignedIn } = useAuth();
   const [showPaywall, setShowPaywall] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [loadingText, setLoadingText] = useState("Synthesizing Patch...");
 
-	const handleGenerate = async () => {
+	  const handleGenerate = async () => {
 		if (!prompt) return;
-		
+
 		setIsGenerating(true);
 		setDownloadUrl(null);
-		setRecipe(null);
-		setShowPaywall(false); // Reset paywall state
+			setRecipe(null);
+		setShowPaywall(false);
+
+		// Array of cool statuses to show the user what is happening
+		const statuses = [
+		  "Analyzing prompt...",
+		  "Programming oscillators...",
+		  "Routing modulation matrix...",
+		  "Applying OTT compression...",
+		  "Compiling .vital file..."
+		];
+
+		let i = 0;
+		setLoadingText(statuses[0]);
+
+		// Change the text every 2.5 seconds
+		const statusInterval = setInterval(() => {
+		  i = (i + 1) % statuses.length;
+		  setLoadingText(statuses[i]);
+		}, 2500);
 
 		try {
 		  const response = await fetch("/api/generate", {
@@ -28,77 +49,78 @@ export default function Home() {
 			body: JSON.stringify({ prompt }),
 		  });
 
-		  // THE MAGIC CHECK: Did the server block us for being broke?
 		  if (response.status === 403) {
 			setShowPaywall(true);
-			setIsGenerating(false);
-			return; // Stop the function here!
+			return;
 		  }
 
-		  if (!response.ok) throw new Error("Failed to generate patch");
+		  if (!response.ok) {
+			const errorText = await response.text();
+			console.error("Server crashed with:", errorText);
+			alert("Server error! Check your terminal.");
+			return;
+		  }
 
 		  const data = await response.json();
 		  const blob = new Blob([data.vitalFileContent], { type: "application/json" });
 		  const url = URL.createObjectURL(blob);
-		  
+
 		  setDownloadUrl(url);
 		  setRecipe(data.recipe);
+		  // Tell the Sidebar to refresh its credit count!
+		  window.dispatchEvent(new Event("credits-updated"));
 		} catch (error) {
 		  console.error(error);
 		  alert("Something went wrong during generation.");
 		} finally {
+		  clearInterval(statusInterval); // Stop the text animation
 		  setIsGenerating(false);
 		}
 	  };
 
-  return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 font-sans selection:bg-purple-500/30">
-      <div className="max-w-3xl mx-auto space-y-8">
+		const handleModalUpgrade = async () => {
+			try {
+			  const response = await fetch("/api/stripe/checkout", { method: "POST" });
+			  const data = await response.json();
+			  if (data.url) window.location.href = data.url;
+			} catch (error) {
+			  alert("Checkout is currently unavailable.");
+			}
+		  };
+
+	  const fetchCredits = async () => {
+		if (!isSignedIn) return;
+		try {
+		  const res = await fetch("/api/user");
+		  const data = await res.json();
+		  setCredits(data.credits);
+		  setIsPro(data.isPro);
+		} catch (error) {
+		  console.error("Failed to fetch credits");
+		}
+		  };
+
+		  useEffect(() => {
+			fetchCredits();
+		  }, [isSignedIn]);
+
+	  return (
+		<div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 font-sans selection:bg-purple-500/30">
+		  <div className="max-w-3xl mx-auto space-y-8">
+
+		  {/* Header */}
+			<header className="flex items-center justify-between space-y-2 border-b border-zinc-800 pb-6">
+			  <div>
+				<div className="flex items-center space-x-3 text-purple-400">
+				  <SlidersHorizontal size={28} />
+				  <h1 className="text-3xl font-bold tracking-tight text-white">PromptSynth</h1>
+				</div>
+				<p className="text-zinc-400 text-lg mt-1">
+				  AI Sound Designer for Vital.
+				</p>
+			  </div>
+		  </header>
         
-	  {/* Header */}
-        <header className="flex items-center justify-between space-y-2 border-b border-zinc-800 pb-6">
-          <div>
-            <div className="flex items-center space-x-3 text-purple-400">
-              <SlidersHorizontal size={28} />
-              <h1 className="text-3xl font-bold tracking-tight text-white">PromptSynth</h1>
-            </div>
-            <p className="text-zinc-400 text-lg mt-1">
-              AI Sound Designer for Vital.
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <Link href="/chords" className="flex items-center px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-zinc-300 font-medium transition-colors">
-              <Music className="mr-2" size={18} /> Chords
-            </Link>
-
-            {/* 1. Loading State (Prevents layout shift before Clerk checks auth) */}
-            {!isLoaded && (
-               <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
-            )}
-
-            {/* 2. If logged OUT: Show Sign In Button */}
-            {isLoaded && !isSignedIn && (
-              <div className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-medium transition-colors cursor-pointer">
-                <SignInButton mode="modal" />
-              </div>
-            )}
-
-            {/* 3. If logged IN: Show Library Link AND User Profile Avatar */}
-            {isLoaded && isSignedIn && (
-              <>
-                <Link href="/library" className="flex items-center px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-zinc-300 font-medium transition-colors">
-                  <Library className="mr-2" size={18} /> My Sounds
-                </Link>
-                <div className="pl-2">
-                  <UserButton afterSignOutUrl="/" />
-                </div>
-              </>
-            )}
-          </div>
-        </header>
-
-
         {/* Generator Box */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
           <textarea
@@ -108,12 +130,12 @@ export default function Home() {
             onChange={(e) => setPrompt(e.target.value)}
             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all"
           />
-          <button
+		  <button
             onClick={handleGenerate}
             disabled={isGenerating || !prompt}
             className="w-full mt-4 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold py-4 rounded-xl flex items-center justify-center transition-colors shadow-lg"
           >
-            {isGenerating ? <><Loader2 className="animate-spin mr-2" size={20} /> Synthesizing Patch...</> : <><Wand2 className="mr-2" size={20} /> Generate</>}
+            {isGenerating ? <><Loader2 className="animate-spin mr-2" size={20} /> {loadingText}</> : <><Wand2 className="mr-2" size={20} /> Generate</>}
           </button>
         </div>
 
@@ -155,7 +177,7 @@ export default function Home() {
 				  </p>
 
 				  <button
-					onClick={() => alert("Stripe Checkout coming next!")}
+					onClick={handleModalUpgrade}
 					className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl flex items-center justify-center transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:scale-[1.02]"
 				  >
 					Upgrade to Pro - $10/mo
