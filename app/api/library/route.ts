@@ -22,17 +22,22 @@ export async function GET() {
     });
 
     const libraryWithFiles = generations.map((gen) => {
-      const recipe = JSON.parse(gen.recipeData);
-      return {
-        id: gen.id,
-        prompt: gen.prompt,
-        category: gen.category,
-        mood: gen.mood,
-        createdAt: gen.createdAt,
-        recipe: recipe,
-        vitalFileContent: buildVitalPreset(recipe)
-      };
-    });
+      try {
+        const recipe = JSON.parse(gen.recipeData);
+        return {
+          id: gen.id,
+          prompt: gen.prompt,
+          category: gen.category,
+          mood: gen.mood,
+          createdAt: gen.createdAt,
+          recipe: recipe,
+          vitalFileContent: buildVitalPreset(recipe)
+        };
+      } catch (parseError) {
+        console.error(`Invalid JSON in generation ${gen.id}:`, parseError);
+        return null;
+      }
+    }).filter(Boolean);
 
     return NextResponse.json(libraryWithFiles);
   } catch (error: any) {

@@ -10,9 +10,17 @@ export default function Library() {
 
   useEffect(() => {
     fetch("/api/library")
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch library");
+        return res.json();
+      })
       .then(data => {
-        setPresets(data);
+        setPresets(Array.isArray(data) ? data : []);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setPresets([]);
         setIsLoading(false);
       });
   }, []);
