@@ -4,8 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildVitalPreset } from '@/lib/vital-builder';
 import { prisma } from '@/lib/db';
 import { processCreditRefill } from '@/lib/refill';
-import path from "path";
-import fs from "fs/promises";
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -41,7 +40,7 @@ export async function POST(req: Request) {
     console.log(`🤖 Requesting Gemini recipe for: "${prompt}"`);
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
       }
@@ -72,7 +71,30 @@ export async function POST(req: Request) {
     User Prompt: ${prompt}
     `;
 
-    const result = await model.generateContent(systemPrompt);
+
+    // Helper function to retry the API call
+    async function generateWithRetry(prompt: string, maxRetries = 3) {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          // Replace this with your actual Gemini generation call
+          const result = await model.generateContent(prompt);
+          return result;
+
+        } catch (error: any) {
+          // If it's a 503 error AND we haven't run out of retries yet
+          if (error?.status === 503 && attempt < maxRetries - 1) {
+            console.warn(`Gemini API busy. Retrying in ${attempt + 1} seconds...`);
+            // Wait 1s, then 2s, then 3s...
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            continue;
+          }
+
+          // If it's not a 503, or we ran out of retries, throw the error
+          throw error;
+        }
+      }
+    }
+    const result = await generateWithRetry(systemPrompt);
     const recipe = JSON.parse(result.response.text());
 
     // ==========================================
