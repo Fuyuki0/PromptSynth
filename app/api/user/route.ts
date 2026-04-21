@@ -1,31 +1,19 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from '@/lib/db';
+import { processCreditRefill } from '@/lib/refill';
 
 export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
-    let userSub = await prisma.userSubscription.findUnique({
-      where: { userId: userId }
-    });
-
-    if (!userSub) {
-      userSub = await prisma.userSubscription.create({
-        data: { userId: userId, freeCredits: 5 }
-      });
-    }
-
-    const isPro = !!(
-      userSub.stripePriceId && 
-      userSub.stripeCurrentPeriodEnd && 
-      userSub.stripeCurrentPeriodEnd.getTime() + 86_400_000 > Date.now()
-    );
+    const userData = await processCreditRefill(userId);
 
     return NextResponse.json({ 
-      credits: userSub.freeCredits, 
-      isPro: isPro 
+      credits: userData.freeCredits, 
+      isPro: userData.isPro,
+      nextRefillTime: userData.nextRefillTime
     });
 	} catch (error) {
 		// NEW: Print the exact error so we can see what crashed!

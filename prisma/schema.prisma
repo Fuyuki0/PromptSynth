@@ -32,4 +32,5 @@ model UserSubscription {
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
   freeCredits            Int       @default(5) // Give them 5 free sounds to start
+  lastCreditRefill       DateTime  @default(now())
 }

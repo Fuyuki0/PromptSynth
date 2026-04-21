@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildVitalPreset } from '@/lib/vital-builder';
 import { prisma } from '@/lib/db';
+import { processCreditRefill } from '@/lib/refill';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -18,24 +19,9 @@ export async function POST(req: Request) {
     // THE BOUNCER: CREDIT & SUBSCRIPTION CHECK
     // ==========================================
     
-    // Find the user's billing record
-    let userSub = await prisma.userSubscription.findUnique({
-      where: { userId: userId }
-    });
-
-    // If it's their very first time, create a wallet with 5 free credits
-    if (!userSub) {
-      userSub = await prisma.userSubscription.create({
-        data: { userId: userId, freeCredits: 5 }
-      });
-    }
-
-    // Check if they are an active paying subscriber (Added a 1-day grace period)
-    const isPro = !!(
-      userSub.stripePriceId && 
-      userSub.stripeCurrentPeriodEnd && 
-      userSub.stripeCurrentPeriodEnd.getTime() + 86_400_000 > Date.now()
-    );
+    // Process refill logic and get user info
+    const userSub = await processCreditRefill(userId);
+    const isPro = userSub.isPro;
 
     // If they aren't Pro, and they have 0 credits left, BLOCK THEM!
     if (!isPro && userSub.freeCredits <= 0) {

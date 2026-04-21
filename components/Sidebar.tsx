@@ -13,6 +13,8 @@ function SidebarContent() {
   const { isLoaded, isSignedIn } = useAuth();
   const [credits, setCredits] = useState<number | null>(null);
   const [isPro, setIsPro] = useState(false);
+  const [nextRefillTime, setNextRefillTime] = useState<number | null>(null);
+  const [timeUntilRefill, setTimeUntilRefill] = useState<string>("");
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
   // --- THE TRAP SETTER ---
@@ -63,10 +65,31 @@ function SidebarContent() {
         const data = await res.json();
         setCredits(data.credits);
         setIsPro(data.isPro);
+        setNextRefillTime(data.nextRefillTime || null);
       } catch (error) {
         console.error("Failed to fetch credits");
       }
     };
+
+    // 2.5 The Refill Timer
+    let interval: NodeJS.Timeout;
+    if (nextRefillTime) {
+      interval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = nextRefillTime - now;
+
+        if (distance <= 0) {
+          clearInterval(interval);
+          setTimeUntilRefill("Refilling...");
+          fetchCredits();
+        } else {
+          const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+          setTimeUntilRefill(`${hours}h ${minutes}m ${seconds}s`);
+        }
+      }, 1000);
+    }
 
 	// 3. THE GENTLE UNPAUSE LISTENER
     const handlePageShow = (event: PageTransitionEvent) => {
@@ -98,8 +121,9 @@ function SidebarContent() {
       window.removeEventListener("pageshow", handlePageShow);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("credits-updated", fetchCredits);
+      if (interval) clearInterval(interval);
     };
-  }, [isSignedIn, pathname, searchParams]);
+  }, [isSignedIn, pathname, searchParams, nextRefillTime]);
 
   const navLinks = [
     { name: "Generator", path: "/", icon: <SlidersHorizontal size={20} /> },
@@ -156,27 +180,44 @@ function SidebarContent() {
           ) : (
             <div className="flex flex-col space-y-4">
 
-              {!isPro && credits !== null && (
-                <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 text-sm font-medium">
-                  <span className="flex items-center"><Zap size={16} className="mr-2 text-yellow-500" /> Credits</span>
-                  <span className="text-white font-bold">{credits}</span>
+              {!isPro ? (
+                <>
+                  {credits !== null && (
+                    <div className="flex flex-col px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <div className="flex items-center justify-between text-sm font-medium">
+                        <span className="flex items-center text-zinc-400"><Zap size={16} className="mr-2 text-yellow-500" /> Credits</span>
+                        <span className="text-white font-bold">{credits}</span>
+                      </div>
+                      {nextRefillTime && (
+                        <div className="mt-2 text-xs text-zinc-500 flex justify-between items-center border-t border-zinc-800/50 pt-2">
+                          <span>Next refill:</span>
+                          <span className="font-mono text-zinc-400">{timeUntilRefill}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleUpgrade}
+                    disabled={isCheckoutLoading}
+                    className="w-full py-3 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/50 text-purple-400 font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCheckoutLoading ? (
+                      <span className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading Stripe...
+                      </span>
+                    ) : (
+                      "⚡ Get Pro"
+                    )}
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-500/30 rounded-xl text-purple-200 text-sm font-medium">
+                  <span className="flex items-center"><Zap size={16} className="mr-2 text-purple-400" /> Plan</span>
+                  <span className="font-bold text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]">PRO</span>
                 </div>
               )}
-
-              <button
-                onClick={handleUpgrade}
-                disabled={isCheckoutLoading}
-                className="w-full py-3 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/50 text-purple-400 font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCheckoutLoading ? (
-                  <span className="flex items-center">
-                    <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Loading Stripe...
-                  </span>
-                ) : (
-                  "⚡ Get Pro"
-                )}
-              </button>
 
               <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 rounded-xl">
                 <span className="text-sm text-zinc-400">Account</span>
